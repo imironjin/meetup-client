@@ -1,7 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 
-import { createBrowserRouter, useLocation } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 
 import App from '@/App.tsx';
 import BottomNavigation from '@/components/common/bottom-navigation/BottomNavigation.tsx';
@@ -63,13 +67,63 @@ const TestPage = React.lazy(() => import('@/pages/test/TestPage.tsx'));
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [refreshing, setRefreshing] = useState(false);
   const hideBottomNav =
     location.pathname.startsWith('/crew') ||
     location.pathname.includes('/user/login') ||
     location.pathname.includes('/user/sign-up');
 
+  useEffect(() => {
+    let startY = 0;
+    let isPulling = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isPulling) return;
+      const currentY = e.touches[0].clientY;
+      const diffY = currentY - startY;
+
+      if (diffY > 50) {
+        setRefreshing(true);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (refreshing) {
+        setTimeout(() => {
+          setRefreshing(false);
+
+          navigate(0);
+        }, 500);
+      }
+      isPulling = false;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [refreshing, navigate]);
+
   return (
     <div className="container">
+      {refreshing && (
+        <div className="loading_spinner">
+          <LoadingSpinner />
+        </div>
+      )}
       <App />
       {!hideBottomNav && <BottomNavigation />}
     </div>
